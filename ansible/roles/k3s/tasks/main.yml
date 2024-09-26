@@ -1,0 +1,26 @@
+# ansible/roles/k3s/tasks/main.yml
+- name: Install K3s (Kubernetes Lightweight)
+  shell: curl -sfL https://get.k3s.io | sh -
+
+- name: Ensure K3s is running
+  systemd:
+    name: k3s
+    state: started
+    enabled: yes
+
+- name: Copy kubeconfig for K3s to the local machine
+  fetch:
+    src: /etc/rancher/k3s/k3s.yaml
+    dest: ./kubeconfig
+    flat: yes
+    validate_checksum: no
+
+- name: Update kubeconfig file permissions
+  local_action:
+    module: file
+    path: ./kubeconfig
+    mode: '0600'
+
+- name: Display the command to access the cluster
+  debug:
+    msg: "To access your K3s cluster, use: KUBECONFIG=./kubeconfig kubectl get nodes"

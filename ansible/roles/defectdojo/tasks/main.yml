@@ -1,0 +1,57 @@
+- name: Clone DefectDojo repository
+  git:
+    repo: https://github.com/DefectDojo/django-DefectDojo.git
+    dest: "{{ chart_path }}"
+
+- name: Add Bitnami Helm repository
+  command: helm repo add bitnami https://charts.bitnami.com/bitnami
+  notify: 
+    - Update Helm repositories
+
+- name: Build Helm chart dependencies
+  command: helm dependency build
+  args:
+    chdir: "{{ chart_path }}/helm/defectdojo"
+
+- name: Install DefectDojo
+  kubernetes.core.helm:
+    kubeconfig: "{{ kubeconfig }}"
+    name: defectdojo
+    chart_ref: "{{ chart_path }}/helm/defectdojo"
+    state: present
+    release_namespace: "{{ app_namespace }}"
+    create_namespace: true
+    release_state: present
+    values:
+      createSecret: true
+      createRedisSecret: true
+      createPostgresqlSecret: true
+      host: "{{ app_host }}"
+      admin:
+        user: "{{ user_name }}"
+        password: "{{ user_password }}"
+        mail: "{{ user_email }}"
+      django:
+        ingress:
+          ingressClassName: traefik
+          annotations:
+            cert-manager.io/cluster-issuer: dojoissuer
+            kubernetes.io/ingress.class: "traefik"
+            traefik.ingress.kubernetes.io/rewrite-target: /
+            traefik.ingress.kubernetes.io/ssl-redirect: "true"
+            traefik.ingress.kubernetes.io/secure: "true"
+            traefik.ingress.kubernetes.io/affinity: "cookie"
+            traefik.ingress.kubernetes.io/proxy-buffer-size: "32k"
+            traefik.ingress.kubernetes.io/proxy-connect-timeout: "600"
+            traefik.ingress.kubernetes.io/proxy-read-timeout: "600"
+            traefik.ingress.kubernetes.io/proxy-send-timeout: "600"
+            traefik.ingress.kubernetes.io/proxy-body-size: "512m"
+            traefik.ingress.kubernetes.io/ssl-passthrough: "true"
+            traefik.ingress.kubernetes.io/redirect-entry-point: "websecure"
+      postgresql:
+        enabled: false
+        postgresServer: "{{ db_host }}"
+        auth:
+          username: "{{ db_username }}"
+          password: "{{ db_password }}"
+          database: "{{ db_name }}"

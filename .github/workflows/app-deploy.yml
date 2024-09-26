@@ -1,0 +1,82 @@
+name: App deploy workflow
+
+on:
+  push:
+    tags:
+      - app-*
+
+jobs:
+  cert-manager:
+    name: "Deploy cert-manager"
+    uses: ./.github/workflows/action.yml
+    with:
+        PLAYBOOK: "cert-manager.yml"
+    secrets:
+        SSH_KEY: ${{ secrets.SSH_KEY }}
+        SERVER_IP: ${{secrets.SERVER_IP }}
+        SERVER_USER: ${{secrets.SERVER_USER }}
+
+  clusterissuer-argocd:
+    name: "Deploy clusterissuer-argocd"
+    needs: cert-manager
+    uses: ./.github/workflows/action.yml
+    with:
+        PLAYBOOK: "clusterissuer.yml"
+        APP_HOST: ${{ vars.ARGOCD_HOST }}
+        APP_NAMESPACE: ${{ vars.ARGOCD_NAMESPACE }}
+        NAME_CLUSTERISSUER: "argoissuer"
+        CHART_PATH: "clusterissuer"
+    secrets:
+        SSH_KEY: ${{ secrets.SSH_KEY }}
+        SERVER_IP: ${{secrets.SERVER_IP }}
+        SERVER_USER: ${{secrets.SERVER_USER }}
+  
+  clusterissuer-defectdojo:
+      name: "Deploy clusterissuer-defectdojo"
+      needs: cert-manager
+      uses: ./.github/workflows/action.yml
+      with:
+          PLAYBOOK: "clusterissuer.yml"
+          APP_HOST: ${{ vars.DEFECTDOJO_HOST }}
+          APP_NAMESPACE: ${{ vars.DEFECTDOJO_NAMESPACE }}
+          NAME_CLUSTERISSUER: "dojoissuer"
+          CHART_PATH: "clusterissuer"
+      secrets:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SERVER_IP: ${{secrets.SERVER_IP }}
+          SERVER_USER: ${{secrets.SERVER_USER }}
+
+  argocd:
+    name: "Deploy argocd"
+    needs: clusterissuer-argocd
+    uses: ./.github/workflows/action.yml
+    with:
+        APP_HOST: ${{ vars.ARGOCD_HOST }}
+        APP_NAMESPACE: ${{ vars.ARGOCD_NAMESPACE }}
+        PLAYBOOK: "argocd.yml"
+    secrets:
+        USER_PASSWORD: ${{ secrets.ARGOCD_PASSWORD }}
+        SSH_KEY: ${{ secrets.SSH_KEY }}
+        SERVER_IP: ${{secrets.SERVER_IP }}
+        SERVER_USER: ${{secrets.SERVER_USER }}
+
+  defectdojo:
+    name: "Deploy defectdojo"
+    needs: clusterissuer-defectdojo
+    uses: ./.github/workflows/action.yml
+    with:
+        APP_HOST: ${{ vars.DEFECTDOJO_HOST }}
+        APP_NAMESPACE: ${{ vars.DEFECTDOJO_NAMESPACE }}
+        USER_EMAIL: ${{ vars.USER_EMAIL }}
+        PLAYBOOK: "defectdojo.yml"
+        CHART_PATH: ${{ vars.DEFECTDOJO_CHART_PATH }}
+    secrets:
+        USER_NAME: ${{ secrets.DEFECTDOJO_ADMIN }}
+        USER_PASSWORD: ${{ secrets.DEFECTDOJO_PASSWORD }}
+        DB_HOST: ${{ secrets. DEFECTDOJO_DBHOST }}
+        DB_NAME: ${{ secrets.DEFECTDOJO_DBNAME }}
+        DB_PASSWORD: ${{ secrets.DEFECTDOJO_DBPASSWORD }}
+        DB_USERNAME: ${{ secrets.DEFECTDOJO_USERNAME }}
+        SSH_KEY: ${{ secrets.SSH_KEY }}
+        SERVER_IP: ${{secrets.SERVER_IP }}
+        SERVER_USER: ${{secrets.SERVER_USER }}

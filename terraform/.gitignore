@@ -1,0 +1,6 @@
+authorized_key.json
+locals.tf
+terraform.tfvars
+# variables.tf
+terraform.tfstate
+.terraform/providers
